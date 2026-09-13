@@ -1,0 +1,5 @@
+import pandas as pd
+df = pd.read_excel("referrals.xlsx")
+df["Suburb"] = df["Suburb"].str.title()
+df["Client Name"] = df["Client Name"].str.strip()
+df.to_excel("cleaned_referrals.xlsx", index=False)
