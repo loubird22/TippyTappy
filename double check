@@ -1,0 +1,23 @@
+SELECT *
+FROM Clients
+WHERE ContactDate >= DATEADD(MONTH, -1, GETDATE());
+SELECT
+ClientID,
+ClientName,
+ContactDate
+FROM Clients
+WHERE ContactDate >= DATEADD(MONTH, -1, GETDATE())
+ORDER BY ContactDate DESC;
+SELECT
+ClientID,
+ClientName,
+ContactDate,
+ContactType,
+WorkerName
+FROM Clients
+WHERE ContactDate >= DATEADD(MONTH, -1, GETDATE())
+AND (
+ContactType NOT IN ('Phone', 'Email', 'Face to Face', 'Outreach')
+OR ContactType IS NULL
+OR WorkerName IS NULL
+);
