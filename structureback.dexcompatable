@@ -1,4 +1,79 @@
 /* 
+   Master Schema Draft - DEX/AIHW Ready
+   (Run this to rebuild the local Supabase environment)
+*/
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS moddatetime SCHEMA extensions;
+
+-- Teardown for clean local runs
+DROP VIEW IF EXISTS vw_child_unit_history CASCADE;
+DROP VIEW IF EXISTS vw_smart_episode_status CASCADE;
+DROP TABLE IF EXISTS episode_notes CASCADE;
+DROP TABLE IF EXISTS presenting_episodes CASCADE;
+DROP TABLE IF EXISTS client_presenting_units CASCADE;
+DROP TABLE IF EXISTS presenting_units CASCADE;
+DROP TABLE IF EXISTS clients CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP SEQUENCE IF EXISTS seq_client_id CASCADE;
+DROP SEQUENCE IF EXISTS seq_presentingunit_id CASCADE;
+DROP SEQUENCE IF EXISTS seq_pe_id CASCADE;
+
+-- Readable IDs for frontline workers (e.g. EPI-1004)
+CREATE SEQUENCE seq_client_id START WITH 100000 MINVALUE 100000;
+CREATE SEQUENCE seq_presentingunit_id START WITH 100000 MINVALUE 100000;
+CREATE SEQUENCE seq_pe_id START WITH 1000 MINVALUE 1000;
+
+-- Audit Helpers
+-- Note: The API needs to inject 'app.current_user_id' into the session before 
+-- running updates, otherwise RLS will block the transaction.
+CREATE OR REPLACE FUNCTION current_app_user_id() RETURNS INT AS $$ BEGIN     RETURN NULLIF(current_setting('app.current_user_id', true), '')::INT; END; $$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION current_app_user_role() RETURNS VARCHAR(20) AS $$ DECLARE     v_role VARCHAR(20); BEGIN     SELECT role INTO v_role FROM users WHERE user_id = current_app_user_id();     RETURN COALESCE(v_role, 'user'); END; $$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION fn_audit_update_timestamp_and_user() RETURNS TRIGGER AS $$ BEGIN     NEW.updated_at = CURRENT_TIMESTAMP;     IF NEW.updated_by_user_id IS NULL THEN         NEW.updated_by_user_id = current_app_user_id();     END IF;     RETURN NEW; END; $$ LANGUAGE plpgsql;
+
+-- Staff / System Users
+CREATE TABLE users (
+    user_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'user',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (username, full_name, role) VALUES
+('jlpicard',    'Jean-Luc Picard',   'admin'),
+('brikker',     'William Riker',     'manager'),
+('bcrusher',    'Beverly Crusher',   'user'),
+('zim_invader', 'Invader Zim',       'user'),
+('ms_bitters',  'Ms. Bitters',       'user');
+
+-- Core Client Demographics
+CREATE TABLE clients (
+    client_id INT PRIMARY KEY DEFAULT nextval('seq_client_id'),
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    alias VARCHAR(50),
+    dob_month INT CHECK (dob_month BETWEEN 1 AND 12),
+    dob_year INT CHECK (dob_year BETWEEN 1900 AND 2100),
+    gender VARCHAR(50),
+    sex VARCHAR(50),
+    is_aboriginal_or_torres_strait BOOLEAN DEFAULT FALSE,
+    cultural_group VARCHAR(100),
+    born_os BOOLEAN DEFAULT FALSE,
+    country_of_birth VARCHAR(100),
+    esl BOOLEAN DEFAULT FALSE,
+    visa_status VARCHAR(50),
+    hx_oohc BOOLEAN DEFAULT FALSE,
+    literacy_barriers BOOLEAN DEFAULT FALSE,
+    phone_access BOOLEAN DEFAULT TRUE,
+    phone_number_primary VARCHAR(30),
+    phone_number_alt
+
+
+/* 
    MASTER DDL SCRIPT (RLS, Smart Statuses, Junctions)
    --
    HOW TO USE THIS SCRIPT:
