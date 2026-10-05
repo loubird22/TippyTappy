@@ -1,0 +1,166 @@
+# main.py
+# -------------------------------------------------------------------------
+# FASTAPI MIDDLE LAYER - 	AIHWSQUASHED SERVICES CRM
+# -------------------------------------------------------------------------
+# To run locally: 
+# 1. pip install fastapi uvicorn asyncpg pydantic python-dotenv
+# 2. uvicorn main:app --reload
+# 3. Open http://localhost:8000/docs to test the API visually
+# -------------------------------------------------------------------------
+
+import os
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Depends, Header, HTTPException
+from pydantic import BaseModel
+import asyncpg
+
+# Load the Supabase Transaction Pooler URL from your environment variables
+# e.g., postgresql://postgres.xxxx:[PASSWORD]@aws-0-ap-southeast-2.pooler.supabase.com:6543/postgres
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/postgres")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    LIFECYCLE MANAGER: Starts and stops the database connection pool.
+    We pool connections so we aren't opening a slow, brand-new connection 
+    to Supabase every single time a worker clicks a button.
+    """
+    app.state.db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=10)
+    yield
+    await app.state.db_pool.close()
+
+app = FastAPI(title="Human Services CRM API", lifespan=lifespan)
+
+# -------------------------------------------------------------------------
+# DEPENDENCY: THE SECURITY HANDSHAKE (CRITICAL)
+# -------------------------------------------------------------------------
+async def get_db_connection(x_user_id: int = Header(..., description="The ID of the logged-in caseworker")):
+    """
+     intercepts EVERY request before it hits the route.
+    It takes the caseworker's ID, opens a Postgres transaction, and injects 
+    that ID into the session via SET LOCAL. 
+    
+    Because of this, our database RLS (Row-Level Security) knows exactly who 
+    is asking for data, and will silently filter out restricted files.
+    
+    *Note: For Day 1 testing we use a raw X-User-Id header. 
+    For production, swap this to extract the ID from a verified Supabase JWT.*
+    """
+    async with app.state.db_pool.acquire() as connection:
+        async with connection.transaction():
+            # SET LOCAL restricts this variable ONLY to the exact millisecond 
+            # this specific API request is running. It won't bleed to other users.
+            await connection.execute("SET LOCAL app.current_user_id = $1;", str(x_user_id))
+            yield connection
+
+# -------------------------------------------------------------------------
+# PYDANTIC MODELS (Input Validation)
+# -------------------------------------------------------------------------
+class ClientCreate(BaseModel):
+    first_name: str
+    last_name: str
+    dob_month: int
+    dob_year: int
+    gender: str | None = None
+    health_summary: str | None = None
+    is_restricted_access: bool = False
+
+# -------------------------------------------------------------------------
+# ROUTES
+# -------------------------------------------------------------------------
+
+@app.get("/api/clients")
+async def list_clients(db: asyncpg.Connection = Depends(get_db_connection)):
+    """
+    GET ALL COLLABORATIVE CLIENTS
+    Notice there is no "WHERE" clause filtering out restricted files. 
+    The RLS policy in Postgres handles it automatically because of the Dependency.
+    """
+    query = """
+        SELECT client_id, first_name, last_name, dob_month, dob_year, is_restricted_access
+        FROM clients
+        ORDER BY last_name ASC, first_name ASC;
+    """
+    rows = await db.fetch(query)
+    return {"clients": [dict(row) for row in rows]}
+
+
+@app.post("/api/clients", status_code=201)
+async def create_client(
+    client: ClientCreate, 
+    x_user_id: int = Header(...), 
+    db: asyncpg.Connection = Depends(get_db_connection)
+):
+    """
+    CREATE A NEW CLIENT
+    The updated_at and updated_by_user_id fields are handled entirely 
+    by the database triggers we wrote, so we don't need to pass them here.
+    """
+    query = """
+        INSERT INTO clients (
+            first_name, last_name, dob_month, dob_year, gender, health_summary, is_restricted_access, created_by_user_id
+        ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8
+        ) RETURNING client_id;
+    """
+    # Using RETURNING allows us to get the new ID without doing a second SELECT query
+    new_id = await db.fetchval(
+        query, 
+        client.first_name, client.last_name, client.dob_month, client.dob_year, 
+        client.gender, client.health_summary, client.is_restricted_access, x_user_id
+    )
+    return {"message": "Client created successfully", "client_id": new_id}
+
+
+@app.get("/api/cases/active-status")
+async def get_active_cases(db: asyncpg.Connection = Depends(get_db_connection)):
+    """
+    THE 30-DAY AUTO-CLOSE VIEW
+    Front-end dashboards should hit this route to see if a case is open or closed, 
+    so we don't rely on humans remembering to manually close cases.
+    """
+    query = """
+        SELECT pe_id, client_id, manual_status, effective_status 
+        FROM vw_smart_episode_status;
+    """
+    rows = await db.fetch(query)
+    return {"cases": [dict(row) for row in rows]}
+
+
+# -------------------------------------------------------------------------
+# HELPER ROUTE: DEX SLK-581 GENERATOR
+# -------------------------------------------------------------------------
+@app.get("/api/clients/{client_id}/slk")
+async def get_client_slk(client_id: int, db: asyncpg.Connection = Depends(get_db_connection)):
+    """
+    Generates the strict AIHW/DEX SLK-581 hash for government reporting on the fly.
+    Algorithm: 2nd, 3rd, 5th of Surname + 2nd, 3rd of First Name + DDMMYYYY + Gender Code (1,2,9)
+    """
+    query = """
+        SELECT first_name, last_name, dob_month, dob_year, sex
+        FROM clients WHERE client_id = $1;
+    """
+    client = await db.fetchrow(query, client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found or you lack permission.")
+    
+    def get_char(name: str, pos: int) -> str:
+        clean_name = ''.join(c for c in name.upper() if c.isalpha())
+        return clean_name[pos - 1] if len(clean_name) >= pos else '2' # '2' is AIHW fallback for missing letters
+    
+    # 1. Surname (2,3,5)
+    surname_part = get_char(client['last_name'], 2) + get_char(client['last_name'], 3) + get_char(client['last_name'], 5)
+    
+    # 2. First Name (2,3)
+    firstname_part = get_char(client['first_name'], 2) + get_char(client['first_name'], 3)
+    
+    # 3. DOB (DDMMYYYY) - We don't track exact day, so AIHW standard is usually 15th if unknown
+    dob_part = f"15{client['dob_month']:02d}{client['dob_year']}"
+    
+    # 4. Gender Code (1=Male, 2=Female, 9=Other)
+    sex_map = {"Male": "1", "Female": "2"}
+    gender_code = sex_map.get(client['sex'], "9")
+    
+    slk_581 = f"{surname_part}{firstname_part}{dob_part}{gender_code}"
+    
+    return {"client_id": client_id, "slk_581": slk_581}
