@@ -1,0 +1,107 @@
+/* 
+   MASTER DDL SCRIPT (RLS, Smart Statuses, Junctions)
+   --
+   HOW TO USE THIS SCRIPT:
+   This destroys and rebuilds the local database. 
+   not intended for product use. For that, write an ALTER TABLE migration.
+*/
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- moddatetime is required for our auto-closing logic to accurately track when a row was last touched
+CREATE EXTENSION IF NOT EXISTS moddatetime SCHEMA extensions;
+
+-- 1. TEARDOWN
+DROP VIEW IF EXISTS vw_child_unit_history CASCADE;
+DROP VIEW IF EXISTS vw_smart_episode_status CASCADE;
+DROP TABLE IF EXISTS episode_notes CASCADE;
+DROP TABLE IF EXISTS presenting_episodes CASCADE;
+DROP TABLE IF EXISTS client_presenting_units CASCADE;
+DROP TABLE IF EXISTS presenting_units CASCADE;
+DROP TABLE IF EXISTS clients CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP SEQUENCE IF EXISTS seq_client_id CASCADE;
+DROP SEQUENCE IF EXISTS seq_presentingunit_id CASCADE;
+DROP SEQUENCE IF EXISTS seq_pe_id CASCADE;
+
+-- 2. SEQUENCES
+-- for generate readable, formatted IDs vs raw integers.
+CREATE SEQUENCE seq_client_id START WITH 100000 MINVALUE 100000;
+CREATE SEQUENCE seq_presentingunit_id START WITH 100000 MINVALUE 100000;
+CREATE SEQUENCE seq_pe_id START WITH 1000 MINVALUE 1000;
+
+-- 3. SESSION & AUDIT HELPERS
+-- yo: The Python middle layer MUST set 'app.current_user_id' in the session 
+-- before doing INSERTS/UPDATES, or the audit triggers and RLS will fail/block .
+CREATE OR REPLACE FUNCTION current_app_user_id() RETURNS INT AS $$ BEGIN     RETURN NULLIF(current_setting('app.current_user_id', true), '')::INT; END; $$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION current_app_user_role() RETURNS VARCHAR(20) AS $$ DECLARE     v_role VARCHAR(20); BEGIN     SELECT role INTO v_role FROM users WHERE user_id = current_app_user_id();     RETURN COALESCE(v_role, 'user'); END; $$ LANGUAGE plpgsql STABLE;
+
+-- This  catches any UPDATE and stamps the current time and user ID.
+-- It prevents developers from having to manually write updated_at in every Python query.
+CREATE OR REPLACE FUNCTION fn_audit_update_timestamp_and_user() RETURNS TRIGGER AS $$ BEGIN     NEW.updated_at = CURRENT_TIMESTAMP;     IF NEW.updated_by_user_id IS NULL THEN         NEW.updated_by_user_id = current_app_user_id();     END IF;     RETURN NEW; END; $$ LANGUAGE plpgsql;
+
+-- 4. USERS (Staff / System Access)
+CREATE TABLE users (
+    user_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'user', -- Drives RLS permissions below
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (username, full_name, role) VALUES
+('jlpicard',    'Jean-Luc Picard',   'admin'),
+('brikker',     'William Riker',     'manager'),
+('bcrusher',    'Beverly Crusher',   'user'),
+('zim_invader', 'Invader Zim',       'user'),
+('ms_bitters',  'Ms. Bitters',       'user');
+
+-- 5. CLIENTS (Master Demographics)
+-- NOTE: Never duplicate a client here if they change families. Update their junction table instead.
+CREATE TABLE clients (
+    client_id INT PRIMARY KEY DEFAULT nextval('seq_client_id'),
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    dob_year INT,
+    is_restricted_access BOOLEAN NOT NULL DEFAULT FALSE, -- The Security "Panic Button"
+    created_by_user_id INT NOT NULL REFERENCES users(user_id),
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_by_user_id INT REFERENCES users(user_id),
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER trg_clients_audit
+BEFORE UPDATE ON clients FOR EACH ROW EXECUTE FUNCTION fn_audit_update_timestamp_and_user();
+
+INSERT INTO clients (first_name, last_name, dob_year, created_by_user_id) VALUES
+('Gaz',   'Membrane', 2004, 4), -- Zim created
+('Spock', 'Sarek',    1930, 2); -- Riker created
+
+-- 6. PRESENTING UNITS (Households / Foster Families / Groups)
+CREATE TABLE presenting_units (
+    presentingunit_id VARCHAR(20) PRIMARY KEY DEFAULT ('PU-' || nextval('seq_presentingunit_id')::TEXT),
+    unit_name VARCHAR(100) NOT NULL,
+    created_by_user_id INT NOT NULL REFERENCES users(user_id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 7. CLIENT -> UNIT JUNCTION (The Web)
+-- CRITICAL: This is how we handle 1 child having multiple cases across different families over time.
+-- If a child moves out, do NOT delete them here. Update their status or end_date (if added later).
+CREATE TABLE client_presenting_units (
+    client_id INT REFERENCES clients(client_id) ON DELETE RESTRICT,
+    presentingunit_id VARCHAR(20) REFERENCES presenting_units(presentingunit_id) ON DELETE CASCADE,
+    family_role VARCHAR(50) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (client_id, presentingunit_id)
+);
+-- Reverse index: Makes "Show me everyone in Unit PU-100" lightning fast.
+CREATE INDEX idx_cpu_unit_id ON client_presenting_units(presentingunit_id);
+
+-- 8. EPISODES (The specific instance of care/support)
+CREATE TABLE presenting_episodes (
+    pe_id VARCHAR(20) PRIMARY KEY DEFAULT ('EPI-' || nextval('seq_pe_id')::TEXT),
+    client_id INT NOT NULL REFERENCES clients(client_id),
+    presentingunit_id VARCHAR(20) REFERENCES presenting_units(present
