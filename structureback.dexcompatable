@@ -2,6 +2,7 @@
    Master Schema Draft - DEX/AIHW Ready
    (Run this to rebuild the local Supabase environment)
 */
+--This draft is written by lou and shouldn't be used without asking because that isn't very polite :P--
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS moddatetime SCHEMA extensions;
@@ -28,9 +29,7 @@ CREATE SEQUENCE seq_pe_id START WITH 1000 MINVALUE 1000;
 -- Note: The API needs to inject 'app.current_user_id' into the session before 
 -- running updates, otherwise RLS will block the transaction.
 CREATE OR REPLACE FUNCTION current_app_user_id() RETURNS INT AS $$ BEGIN     RETURN NULLIF(current_setting('app.current_user_id', true), '')::INT; END; $$ LANGUAGE plpgsql STABLE;
-
 CREATE OR REPLACE FUNCTION current_app_user_role() RETURNS VARCHAR(20) AS $$ DECLARE     v_role VARCHAR(20); BEGIN     SELECT role INTO v_role FROM users WHERE user_id = current_app_user_id();     RETURN COALESCE(v_role, 'user'); END; $$ LANGUAGE plpgsql STABLE;
-
 CREATE OR REPLACE FUNCTION fn_audit_update_timestamp_and_user() RETURNS TRIGGER AS $$ BEGIN     NEW.updated_at = CURRENT_TIMESTAMP;     IF NEW.updated_by_user_id IS NULL THEN         NEW.updated_by_user_id = current_app_user_id();     END IF;     RETURN NEW; END; $$ LANGUAGE plpgsql;
 
 -- Staff / System Users
@@ -71,8 +70,6 @@ CREATE TABLE clients (
     phone_access BOOLEAN DEFAULT TRUE,
     phone_number_primary VARCHAR(30),
     phone_number_alt
-
-
 /* 
    MASTER DDL SCRIPT (RLS, Smart Statuses, Junctions)
    --
@@ -133,50 +130,46 @@ INSERT INTO users (username, full_name, role) VALUES
 ('ms_bitters',  'Ms. Bitters',       'user');
 
 -- 5. CLIENTS (Master Demographics)
--- NOTE: Never duplicate a client here if they change families. Update their junction table instead.
+-- A client is created once and never duplicated.
+
 CREATE TABLE clients (
-    client_id INT PRIMARY KEY DEFAULT nextval('seq_client_id'),
+    client_id INT PRIMARY KEY
+        DEFAULT nextval('seq_client_id'),
+
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
-    dob_year INT,
-    is_restricted_access BOOLEAN NOT NULL DEFAULT FALSE, -- The Security "Panic Button"
-    created_by_user_id INT NOT NULL REFERENCES users(user_id),
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_by_user_id INT REFERENCES users(user_id),
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+
+dob_year INT,
+is_restricted_access BOOLEAN NOT NULL DEFAULT FALSE,
+created_by_user_id INT NOT NULL
+REFERENCES users(user_id),
+created_at TIMESTAMPTZ NOT NULL
+DEFAULT CURRENT_TIMESTAMP,
+updated_by_user_id INT
+REFERENCES users(user_id),
+updated_at TIMESTAMPTZ NOT NULL
+   DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TRIGGER trg_clients_audit
-BEFORE UPDATE ON clients FOR EACH ROW EXECUTE FUNCTION fn_audit_update_timestamp_and_user();
+BEFORE UPDATE ON clients
+FOR EACH ROW
+EXECUTE FUNCTION fn_audit_update_timestamp_and_user();
 
-INSERT INTO clients (first_name, last_name, dob_year, created_by_user_id) VALUES
-('Gaz',   'Membrane', 2004, 4), -- Zim created
-('Spock', 'Sarek',    1930, 2); -- Riker created
+INSERT INTO clients (
+    first_name,
+    last_name,
+    dob_year,
+    created_by_user_id
+)
+VALUES
+('Gaz',   'Membrane', 2004, 4),
+('Spock', 'Sarek',    1930, 2);
 
--- 6. PRESENTING UNITS (Households / Foster Families / Groups)
-CREATE TABLE presenting_units (
-    presentingunit_id VARCHAR(20) PRIMARY KEY DEFAULT ('PU-' || nextval('seq_presentingunit_id')::TEXT),
-    unit_name VARCHAR(100) NOT NULL,
-    created_by_user_id INT NOT NULL REFERENCES users(user_id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
--- 7. CLIENT -> UNIT JUNCTION (The Web)
--- CRITICAL: This is how we handle 1 child having multiple cases across different families over time.
--- If a child moves out, do NOT delete them here. Update their status or end_date (if added later).
-CREATE TABLE client_presenting_units (
-    client_id INT REFERENCES clients(client_id) ON DELETE RESTRICT,
-    presentingunit_id VARCHAR(20) REFERENCES presenting_units(presentingunit_id) ON DELETE CASCADE,
-    family_role VARCHAR(50) NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (client_id, presentingunit_id)
-);
--- Reverse index: Makes "Show me everyone in Unit PU-100" lightning fast.
-CREATE INDEX idx_cpu_unit_id ON client_presenting_units(presentingunit_id);
-
--- 8. EPISODES (The specific instance of care/support)
-CREATE TABLE presenting_episodes (
-    pe_id VARCHAR(20) PRIMARY KEY DEFAULT ('EPI-' || nextval('seq_pe_id')::TEXT),
-    client_id INT NOT NULL REFERENCES clients(client_id),
-    presentingunit_id VARCHAR(20) REFERENCES presenting_units(present
+-- 6. PRESENTING ISSUES, Presenting Issues describe WHY the client is engaging.
+-- Logic used is that a client may have multiple concurrent episodes with, different presenting issues. A client may have multiple open episodes if the presenting unit is different, a flag will indicate if this occurs because it escalates risk.
+CREATE TABLE presenting_issues (
+presenting_issue_id SERIAL PRIMARY KEY,
+issue_name VARCHAR(100) NOT NULL UNIQUE,
+issue_group VARCHAR(100),
+is_active BOOLEAN NOT NULL 
