@@ -1,5 +1,5 @@
--- WARNING: This schema is for context only and is not meant to be run.
--- Table order and constraints may not be valid for execution.
+-- YO HEADS UP:  schema is for context only and is not meant to be run. She's just a baby. 
+-- Table order and constraints is not be valid for execution. i've duplicated stuff to work through things rn.
 
 CREATE TABLE public.Demographics (
   Client_ID bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
