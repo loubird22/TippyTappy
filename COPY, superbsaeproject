@@ -2,18 +2,18 @@
 -- Table order and constraints is not be valid for execution. i've duplicated stuff to work through things rn.
 
 CREATE TABLE public.Demographics (
-  Client_ID bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  DateofBirth date,
-  Note character varying DEFAULT ''::character varying,
-  Modified_by character varying NOT NULL DEFAULT 'NOTNULL'::character varying,
-  CONSTRAINT Demographics_pkey PRIMARY KEY (Client_ID),
-  CONSTRAINT Demographics_Modified_by_fkey FOREIGN KEY (Modified_by) REFERENCES public.users(username)
+  Client_ID bigint GENERATED ALWAYS AS IDENTITY NOT NULL
+,  created_at timestamp with time zone NOT NULL DEFAULT now()
+,  DateofBirth date
+,  Note character varying DEFAULT ''::character varying
+,  Modified_by character varying NOT NULL DEFAULT 'NOTNULL'::character varying
+,  CONSTRAINT Demographics_pkey PRIMARY KEY (Client_ID)
+,  CONSTRAINT Demographics_Modified_by_fkey FOREIGN KEY (Modified_by) REFERENCES public.users(username)
 );
 CREATE TABLE public.need_types (
-  need_type_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  name text NOT NULL UNIQUE,
-  CONSTRAINT need_types_pkey PRIMARY KEY (need_type_id)
+  need_type_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL
+,  name text NOT NULL UNIQUE
+,  CONSTRAINT need_types_pkey PRIMARY KEY (need_type_id)
 );
 CREATE TABLE public.assessment_types (
   assessment_type_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -33,11 +33,11 @@ CREATE TABLE public.referral_types (
 );
 CREATE TABLE public.users (
   user_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
-  auth_uid uuid UNIQUE,
-  username character varying NOT NULL UNIQUE,
-  full_name character varying NOT NULL,
-  email character varying NOT NULL UNIQUE,
-  role character varying NOT NULL DEFAULT 'user'::character varying CHECK (role::text = ANY (ARRAY['user'::character varying, 'manager'::character varying, 'admin'::character varying]::text[])),
+  auth_uid uuid UNIQUE
+,  username character varying NOT NULL UNIQUE
+,  full_name character varying NOT NULL
+,  email character varying NOT NULL UNIQUE
+,  role character varying NOT NULL DEFAULT 'user'::character varying CHECK (role::text = ANY (ARRAY['user'::character varying, 'manager'::character varying, 'admin'::character varying]::text[])),
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -46,15 +46,15 @@ CREATE TABLE public.users (
 CREATE TABLE public.referral_agencies (
   agency_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
   agency_name character varying NOT NULL,
-  agency_type character varying,
-  contact_phone character varying,
-  contact_email character varying,
-  is_active boolean NOT NULL DEFAULT true,
-  created_by_user_id integer,
-  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_by_user_id integer,
-  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT referral_agencies_pkey PRIMARY KEY (agency_id),
+  agency_type character varying
+,  contact_phone character varying
+,  contact_email character varying
+,  is_active boolean NOT NULL DEFAULT true,
+  created_by_user_id integer
+,  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+,  updated_by_user_id integer
+,  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+,  CONSTRAINT referral_agencies_pkey PRIMARY KEY (agency_id),
   CONSTRAINT referral_agencies_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public.users(user_id),
   CONSTRAINT referral_agencies_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public.users(user_id)
 );
