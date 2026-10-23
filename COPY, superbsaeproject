@@ -1,0 +1,275 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.Demographics (
+  Client_ID bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  DateofBirth date,
+  Note character varying DEFAULT ''::character varying,
+  Modified_by character varying NOT NULL DEFAULT 'NOTNULL'::character varying,
+  CONSTRAINT Demographics_pkey PRIMARY KEY (Client_ID),
+  CONSTRAINT Demographics_Modified_by_fkey FOREIGN KEY (Modified_by) REFERENCES public.users(username)
+);
+CREATE TABLE public.need_types (
+  need_type_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  name text NOT NULL UNIQUE,
+  CONSTRAINT need_types_pkey PRIMARY KEY (need_type_id)
+);
+CREATE TABLE public.assessment_types (
+  assessment_type_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  name text NOT NULL UNIQUE,
+  Record_Overtime date,
+  CONSTRAINT assessment_types_pkey PRIMARY KEY (assessment_type_id)
+);
+CREATE TABLE public.outcome_types (
+  outcome_type_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  name text NOT NULL UNIQUE,
+  CONSTRAINT outcome_types_pkey PRIMARY KEY (outcome_type_id)
+);
+CREATE TABLE public.referral_types (
+  referral_type_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  name text NOT NULL UNIQUE,
+  CONSTRAINT referral_types_pkey PRIMARY KEY (referral_type_id)
+);
+CREATE TABLE public.users (
+  user_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+  auth_uid uuid UNIQUE,
+  username character varying NOT NULL UNIQUE,
+  full_name character varying NOT NULL,
+  email character varying NOT NULL UNIQUE,
+  role character varying NOT NULL DEFAULT 'user'::character varying CHECK (role::text = ANY (ARRAY['user'::character varying, 'manager'::character varying, 'admin'::character varying]::text[])),
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT users_pkey PRIMARY KEY (user_id)
+);
+CREATE TABLE public.referral_agencies (
+  agency_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+  agency_name character varying NOT NULL,
+  agency_type character varying,
+  contact_phone character varying,
+  contact_email character varying,
+  is_active boolean NOT NULL DEFAULT true,
+  created_by_user_id integer,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by_user_id integer,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT referral_agencies_pkey PRIMARY KEY (agency_id),
+  CONSTRAINT referral_agencies_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public.users(user_id),
+  CONSTRAINT referral_agencies_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public.users(user_id)
+);
+CREATE TABLE public.clients (
+  client_id integer NOT NULL DEFAULT nextval('seq_client_id'::regclass),
+  first_name character varying NOT NULL,
+  last_name character varying NOT NULL,
+  alias character varying,
+  dob_month integer CHECK (dob_month >= 1 AND dob_month <= 12),
+  dob_year integer CHECK (dob_year >= 1900 AND dob_year <= 2100),
+  gender character varying,
+  sex character varying,
+  is_aboriginal_or_torres_strait boolean DEFAULT false,
+  cultural_group character varying,
+  born_os boolean DEFAULT false,
+  country_of_birth character varying,
+  esl boolean DEFAULT false,
+  visa_status character varying,
+  hx_oohc boolean DEFAULT false,
+  literacy_barriers boolean DEFAULT false,
+  phone_access boolean DEFAULT true,
+  phone_number_primary character varying,
+  phone_number_alt character varying,
+  best_contact text,
+  emergency_contact text,
+  income_type character varying,
+  date_of_next_pay date,
+  health_summary text,
+  is_active boolean NOT NULL DEFAULT true,
+  created_by_user_id integer NOT NULL,
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_by_user_id integer,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT clients_pkey PRIMARY KEY (client_id),
+  CONSTRAINT clients_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public.users(user_id),
+  CONSTRAINT clients_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public.users(user_id)
+);
+CREATE TABLE public.clients_history (
+  history_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+  client_id integer NOT NULL,
+  first_name character varying NOT NULL,
+  last_name character varying NOT NULL,
+  alias character varying,
+  dob_month integer,
+  dob_year integer,
+  gender character varying,
+  sex character varying,
+  is_aboriginal_or_torres_strait boolean,
+  cultural_group character varying,
+  born_os boolean,
+  country_of_birth character varying,
+  esl boolean,
+  visa_status character varying,
+  hx_oohc boolean,
+  literacy_barriers boolean,
+  phone_access boolean,
+  phone_number_primary character varying,
+  phone_number_alt character varying,
+  best_contact text,
+  emergency_contact text,
+  income_type character varying,
+  date_of_next_pay date,
+  health_summary text,
+  is_active boolean,
+  created_by_user_id integer,
+  created_at timestamp with time zone,
+  updated_by_user_id integer,
+  updated_at timestamp with time zone,
+  archived_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT clients_history_pkey PRIMARY KEY (history_id)
+);
+CREATE TABLE public.referral_details_in (
+  referral_in_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+  client_id integer NOT NULL,
+  referral_type character varying DEFAULT 'Agency'::character varying CHECK (referral_type::text = ANY (ARRAY['Agency'::character varying, 'Self'::character varying, 'Community'::character varying]::text[])),
+  referral_agency_id integer,
+  date_of_receipt date NOT NULL DEFAULT CURRENT_DATE,
+  handover_notes text,
+  created_by_user_id integer NOT NULL,
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_by_user_id integer,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT referral_details_in_pkey PRIMARY KEY (referral_in_id),
+  CONSTRAINT referral_details_in_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(client_id),
+  CONSTRAINT referral_details_in_referral_agency_id_fkey FOREIGN KEY (referral_agency_id) REFERENCES public.referral_agencies(agency_id),
+  CONSTRAINT referral_details_in_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public.users(user_id),
+  CONSTRAINT referral_details_in_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public.users(user_id)
+);
+CREATE TABLE public.presenting_units (
+  presentingunit_id character varying NOT NULL DEFAULT ('PU-'::text || (nextval('seq_presentingunit_id'::regclass))::text),
+  unit_name character varying NOT NULL,
+  created_by_user_id integer NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by_user_id integer,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT presenting_units_pkey PRIMARY KEY (presentingunit_id),
+  CONSTRAINT presenting_units_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public.users(user_id),
+  CONSTRAINT presenting_units_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public.users(user_id)
+);
+CREATE TABLE public.client_presenting_units (
+  client_id integer NOT NULL,
+  presentingunit_id character varying NOT NULL,
+  family_role character varying NOT NULL CHECK (family_role::text = ANY (ARRAY['dependent_child'::character varying, 'primary_contact'::character varying, 'adult_household_member'::character varying]::text[])),
+  is_head_of_unit boolean NOT NULL DEFAULT false,
+  school_name character varying,
+  orders_in_place text,
+  care_concern_report_id character varying,
+  care_concern_date date,
+  created_by_user_id integer NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by_user_id integer,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT client_presenting_units_pkey PRIMARY KEY (client_id, presentingunit_id),
+  CONSTRAINT client_presenting_units_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(client_id),
+  CONSTRAINT client_presenting_units_presentingunit_id_fkey FOREIGN KEY (presentingunit_id) REFERENCES public.presenting_units(presentingunit_id),
+  CONSTRAINT client_presenting_units_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public.users(user_id),
+  CONSTRAINT client_presenting_units_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public.users(user_id)
+);
+CREATE TABLE public.presenting_episodes (
+  pe_id character varying NOT NULL DEFAULT ('EPI-'::text || (nextval('seq_pe_id'::regclass))::text),
+  client_id integer NOT NULL,
+  presentingunit_id character varying,
+  primary_presenting character varying NOT NULL,
+  episode_status character varying NOT NULL DEFAULT 'Open'::character varying CHECK (episode_status::text = ANY (ARRAY['Open'::character varying, 'Closed'::character varying, 'Pending'::character varying]::text[])),
+  episode_date date NOT NULL DEFAULT CURRENT_DATE,
+  existing_service_supports text,
+  immediate_safety_risk boolean DEFAULT false,
+  dfv_risk_present boolean DEFAULT false,
+  dfv_role character varying,
+  children_in_care_count integer DEFAULT 0,
+  children_outside_care_count integer DEFAULT 0,
+  has_disability boolean DEFAULT false,
+  disability_mh boolean DEFAULT false,
+  disability_cognitive boolean DEFAULT false,
+  disability_neurodevelopmental boolean DEFAULT false,
+  disability_physical boolean DEFAULT false,
+  disability_chronic_stable boolean DEFAULT false,
+  disability_chronic_degenerative boolean DEFAULT false,
+  disability_undiagnosed_observed boolean DEFAULT false,
+  dx_status character varying,
+  aod_disclosure character varying CHECK (aod_disclosure::text = ANY (ARRAY['None'::character varying, 'Current'::character varying, 'Historic'::character varying, 'Both'::character varying]::text[])),
+  crimjustice_current boolean DEFAULT false,
+  crimjustice_hx boolean DEFAULT false,
+  created_by_user_id integer NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by_user_id integer,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT presenting_episodes_pkey PRIMARY KEY (pe_id),
+  CONSTRAINT presenting_episodes_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(client_id),
+  CONSTRAINT presenting_episodes_presentingunit_id_fkey FOREIGN KEY (presentingunit_id) REFERENCES public.presenting_units(presentingunit_id),
+  CONSTRAINT presenting_episodes_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public.users(user_id),
+  CONSTRAINT presenting_episodes_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public.users(user_id)
+);
+CREATE TABLE public.episode_notes (
+  note_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+  pe_id character varying NOT NULL,
+  note_type character varying NOT NULL DEFAULT 'General Note'::character varying CHECK (note_type::text = ANY (ARRAY['General Note'::character varying, 'Intake Assessment'::character varying, 'Safety Plan'::character varying, 'Case Review'::character varying, 'Crisis Action'::character varying, 'Phone Interaction'::character varying]::text[])),
+  note_text text NOT NULL,
+  author_user_id integer NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by_user_id integer,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT episode_notes_pkey PRIMARY KEY (note_id),
+  CONSTRAINT episode_notes_pe_id_fkey FOREIGN KEY (pe_id) REFERENCES public.presenting_episodes(pe_id),
+  CONSTRAINT episode_notes_author_user_id_fkey FOREIGN KEY (author_user_id) REFERENCES public.users(user_id),
+  CONSTRAINT episode_notes_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public.users(user_id)
+);
+CREATE TABLE public.outgoing_referrals (
+  referral_out_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+  pe_id character varying NOT NULL,
+  agency_id integer,
+  referral_date date NOT NULL DEFAULT CURRENT_DATE,
+  created_by_user_id integer NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by_user_id integer,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT outgoing_referrals_pkey PRIMARY KEY (referral_out_id),
+  CONSTRAINT outgoing_referrals_pe_id_fkey FOREIGN KEY (pe_id) REFERENCES public.presenting_episodes(pe_id),
+  CONSTRAINT outgoing_referrals_agency_id_fkey FOREIGN KEY (agency_id) REFERENCES public.referral_agencies(agency_id),
+  CONSTRAINT outgoing_referrals_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public.users(user_id),
+  CONSTRAINT outgoing_referrals_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public.users(user_id)
+);
+CREATE TABLE public.attachments (
+  attachment_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+  pe_id character varying,
+  file_name character varying NOT NULL,
+  file_path text NOT NULL,
+  created_by_user_id integer NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by_user_id integer,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT attachments_pkey PRIMARY KEY (attachment_id),
+  CONSTRAINT attachments_pe_id_fkey FOREIGN KEY (pe_id) REFERENCES public.presenting_episodes(pe_id),
+  CONSTRAINT attachments_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public.users(user_id),
+  CONSTRAINT attachments_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public.users(user_id)
+);
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  display_name text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT profiles_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.roles (
+  id integer NOT NULL DEFAULT nextval('roles_id_seq'::regclass),
+  role_name text NOT NULL UNIQUE,
+  CONSTRAINT roles_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.user_roles (
+  user_id uuid,
+  role_id integer,
+  CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT user_roles_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id)
+);
+CREATE TABLE public.ROLES (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ROLES_pkey PRIMARY KEY (id)
+);
