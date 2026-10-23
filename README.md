@@ -1,13 +1,15 @@
-# TippyTappy
+<h1><font color="#7F6BB5">TippyTappy</font></h1>
 
-A place for the things I return to in human service systems, connecting and working around disconnected systems.
+<p><font color="#5F6F7A">A place for the things I return to in human service systems, connecting and working around disconnected systems.</font></p>
 
-- SQL
-- Python
-- PostgreSQL
+<p>
+  <font color="#B76E8A">SQL</font> ·
+  <font color="#6BAA8E">Python</font> ·
+  <font color="#D9A441">PostgreSQL</font>
+</p>
 
-All information is deidentified from applied use.
-I develop these tools to support my work and continue building my skillset.
+<p><font color="#5F6F7A">All information is deidentified from applied use.</font></p>
+<p><font color="#5F6F7A">I develop these tools to support my work and continue building my skillset.</font></p>
 
-Cheers,
-Lou
+<p><font color="#7F6BB5">Cheers,</font><br>
+<font color="#5F6F7A">Lou</font></p>
