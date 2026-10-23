@@ -6,8 +6,7 @@
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS moddatetime SCHEMA extensions;
-
--- Teardown for clean local runs
+-- TEARDOWN YOUR LISTS MR GORBECHEV
 DROP VIEW IF EXISTS vw_child_unit_history CASCADE;
 DROP VIEW IF EXISTS vw_smart_episode_status CASCADE;
 DROP TABLE IF EXISTS episode_notes CASCADE;
@@ -20,7 +19,7 @@ DROP SEQUENCE IF EXISTS seq_client_id CASCADE;
 DROP SEQUENCE IF EXISTS seq_presentingunit_id CASCADE;
 DROP SEQUENCE IF EXISTS seq_pe_id CASCADE;
 
--- Readable IDs for frontline workers (e.g. EPI-1004)
+-- Readable IDs 
 CREATE SEQUENCE seq_client_id START WITH 100000 MINVALUE 100000;
 CREATE SEQUENCE seq_presentingunit_id START WITH 100000 MINVALUE 100000;
 CREATE SEQUENCE seq_pe_id START WITH 1000 MINVALUE 1000;
@@ -74,8 +73,7 @@ CREATE TABLE clients (
    MASTER DDL SCRIPT (RLS, Smart Statuses, Junctions)
    --
    HOW TO USE THIS SCRIPT:
-   This destroys and rebuilds the local database. 
-   not intended for product use. For that, write an ALTER TABLE migration.
+   This destroys and rebuilds the local database. Not intedended to be for production. 
 */
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
