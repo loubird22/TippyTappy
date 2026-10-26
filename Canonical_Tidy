@@ -5,9 +5,8 @@
 * Validation of required fields
 * Classification of presenting needs
 """
-
-import re
-import pandas as pd
+IMPORT re
+IMPORT pandas as pd
 
 # REQUIRED FIELDS --------------------------------------------------
 
@@ -55,7 +54,6 @@ CANONICAL_FIELDS = {
 }
 
 # COLUMN STANDARDISATION -------------------------------------------
-
 COLUMN_MAPPING = {
     source: standard
     for standard, sources in CANONICAL_FIELDS.items()
@@ -63,7 +61,6 @@ COLUMN_MAPPING = {
 }
 
 # AUDIT COLUMNS ----------------------------------------------------
-
 AUDIT_COLUMNS = [
     "created_at",
     "created_by",
@@ -71,25 +68,40 @@ AUDIT_COLUMNS = [
     "updated_by",
 ]
 
-# SOURCE FILES -----------------------------------------------------
-
-SOURCE_FILES = {
-    "Referrals": "referrals.csv",
-    "Assessments": "assessments.csv",
-    "Presentations": "presentations.csv",
-}
-
-# LOAD AND STANDARDISE FILES ---------------------------------------
+# -- LOAD AND STANDARDISE FILES ---------------------------------------
 
 frames = []
-for source_system, file in SOURCE_FILES.items():
-    df = pd.read_csv(file)
-    df.columns = df.columns.str.strip()
-    df = df.rename(columns=COLUMN_MAPPING)
-    df["SourceSystem"] = source_system
-    df["SourceFile"] = file
-    frames.append(df)
 
+for source_system, file in SOURCE_FILES.items():
+    try:
+
+        df = pd.read_csv(file)
+
+        df.columns = (
+            df.columns
+            .str.strip()
+        )
+
+        df = df.rename(
+            columns=COLUMN_MAPPING
+        )
+
+        df["SourceSystem"] = source_system
+        df["SourceFile"] = file
+
+        frames.append(df)
+
+        print(
+            f"Loaded {source_system}: "
+            f"{len(df):,} records"
+        )
+
+    except FileNotFoundError:
+
+        print(
+            f"{source_system}: "
+            f"file not found ({file})"
+        )
 # COMBINE RECORDS --------------------------------------------------
 combined_df = pd.concat(frames, ignore_index=True)
 
@@ -141,7 +153,6 @@ NEED_PATTERN = re.compile(
     r")\b",
     re.IGNORECASE,
 )
-
 combined_df["NeedFlag"] = combined_df["PresentingNeed"].str.contains(
     NEED_PATTERN,
     na=False,
