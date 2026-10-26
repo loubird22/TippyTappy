@@ -1,8 +1,7 @@
-/* 
-   Master Schema Draft - DEX/AIHW Ready
+/*
+  ============================== --Master Schema Draft - DEX/AIHW Ready -- ========================================================
    (Run this to rebuild the local Supabase environment)
 */
---This draft is written by lou and shouldn't be used without asking because that isn't very polite :P--
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS moddatetime SCHEMA extensions;
