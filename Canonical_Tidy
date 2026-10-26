@@ -1,54 +1,60 @@
+"""Canonical Data Pipeline
+* Standardisation of source schemas
+* Data lineage tracking
+* Record deduplication
+* Validation of required fields
+* Classification of presenting needs
+"""
+
 import re
 import pandas as pd
--- REQUIRED FIELDS --------------------------------------------------
+
+# REQUIRED FIELDS --------------------------------------------------
 
 REQUIRED_FIELDS = {
-    "ClientID"
-    ,"ProgramType"
-    ,"AssessmentType"
+    "ClientID",
+    "ProgramType",
+    "AssessmentType",
 }
--- CANONICAL FIELDS -------------------------------------------------
+
+# CANONICAL FIELDS -------------------------------------------------
 
 CANONICAL_FIELDS = {
-
     "ClientID": [
-        "ClientID"
-        ,"Client_Id"
-        ,"Client_Number"
-        ,"PersonID"
-    ]
-
-    ,"ClientName": [
-        "ClientName"
-        ,"NAME"
-        ,"PersonName"
-        ,"Client_Name"
-    ]
-    ,"ProgramType": [
-        "ProgramType"
-        ,"Program"
-        ,"ServiceProgram"
-    ]
-
-    ,"AssessmentType": [
-        "AssessmentType"
-        ,"Assessment"
-        ,"Assessment_Name"
-    ]
-
-    ,"PresentingNeed": [
-        "PresentingNeed"
-        ,"Need"
-        ,"PrimaryNeed"
-    ]
-
-    ,"HousingStatus": [
-        "HousingStatus"
-        ,"Housing"
-        ,"CurrentHousing"
-    ]
+        "ClientID",
+        "Client_Id",
+        "Client_Number",
+        "PersonID",
+    ],
+    "ClientName": [
+        "ClientName",
+        "NAME",
+        "PersonName",
+        "Client_Name",
+    ],
+    "ProgramType": [
+        "ProgramType",
+        "Program",
+        "ServiceProgram",
+    ],
+    "AssessmentType": [
+        "AssessmentType",
+        "Assessment",
+        "Assessment_Name",
+    ],
+    "PresentingNeed": [
+        "PresentingNeed",
+        "Need",
+        "PrimaryNeed",
+    ],
+    "HousingStatus": [
+        "HousingStatus",
+        "Housing",
+        "CurrentHousing",
+    ],
 }
--- COLUMN STANDARDISATION -------------------------------------------
+
+# COLUMN STANDARDISATION -------------------------------------------
 
 COLUMN_MAPPING = {
     source: standard
@@ -56,80 +62,64 @@ COLUMN_MAPPING = {
     for source in sources
 }
 
-#-- AUDIT COLUMNS ----------------------------------------------------
+# AUDIT COLUMNS ----------------------------------------------------
 
 AUDIT_COLUMNS = [
-    "created_at"
-    ,"created_by"
-    ,"updated_at"
-    ,"updated_by"
+    "created_at",
+    "created_by",
+    "updated_at",
+    "updated_by",
 ]
 
-#-- SOURCE FILES -----------------------------------------------------
+# SOURCE FILES -----------------------------------------------------
 
 SOURCE_FILES = {
-    "Referrals": "referrals.csv"
-    ,"Assessments": "assessments.csv"
-    ,"Presentations": "presentations.csv"
+    "Referrals": "referrals.csv",
+    "Assessments": "assessments.csv",
+    "Presentations": "presentations.csv",
 }
 
--- LOAD AND STANDARDISE FILES ---------------------------------------
+# LOAD AND STANDARDISE FILES ---------------------------------------
 
 frames = []
 for source_system, file in SOURCE_FILES.items():
     df = pd.read_csv(file)
-    df.columns = (
-        df.columns
-        .str.strip()
-    )
-    df = df.rename(
-        columns=COLUMN_MAPPING
-    )
+    df.columns = df.columns.str.strip()
+    df = df.rename(columns=COLUMN_MAPPING)
     df["SourceSystem"] = source_system
     df["SourceFile"] = file
-
     frames.append(df)
-#-- COMBINE RECORDS --------------------------------------------------
-combined_df = pd.concat(
-    frames
-    ,ignore_index=True
-)
-#-- UNIQUE EVENT KEY -------------------------------------------------
+
+# COMBINE RECORDS --------------------------------------------------
+combined_df = pd.concat(frames, ignore_index=True)
+
+# UNIQUE EVENT KEY -------------------------------------------------
 
 combined_df["RecordKey"] = (
     combined_df["ClientID"].astype(str)
     + "|"
     + combined_df["AssessmentType"].astype(str)
     + "|"
-    + combined_df.get(
-        "ModifiedDate"
-        ,pd.Series(dtype="object")
-    ).astype(str)
+    + combined_df.get("ModifiedDate", pd.Series(dtype="object")).astype(str)
 )
-#-- REMOVE DUPLICATE EVENTS ------------------------------------------
 
-combined_df = combined_df.drop_duplicates(
-    subset=["RecordKey"]
-)
-#-- REQUIRED FIELD VALIDATION ----------------------------------------
-missing_fields = (
-    REQUIRED_FIELDS
-    - set(combined_df.columns)
+# REMOVE DUPLICATE EVENTS ------------------------------------------
 
+combined_df = combined_df.drop_duplicates(subset=["RecordKey"])
+
+# REQUIRED FIELD VALIDATION ----------------------------------------
+missing_fields = REQUIRED_FIELDS - set(combined_df.columns)
 if missing_fields:
-    print(
-        f"Missing fields: {missing_fields}"
-    )
+    print(f"Missing fields: {missing_fields}")
 
-)
-#-- IMPORT SUMMARY ---------------------------------------------------
+# IMPORT SUMMARY ---------------------------------------------------
 
 print(
     f"Loaded {len(combined_df):,} records "
     f"from {len(SOURCE_FILES)} source files."
 )
 
-#-- NEED CLASSIFICATION ----------------------------------------------
+# NEED CLASSIFICATION ----------------------------------------------
 
 NEED_PATTERN = re.compile(
     r"\b("
@@ -148,13 +138,11 @@ NEED_PATTERN = re.compile(
     r"|financial"
     r"|income"
     r"|support"
-    r")\b"
-    ,re.IGNORECASE
+    r")\b",
+    re.IGNORECASE,
 )
-combined_df["NeedFlag"] = (
-    combined_df["PresentingNeed"]
-    .str.contains(
-        NEED_PATTERN
-        ,na=False
-    )
+
+combined_df["NeedFlag"] = combined_df["PresentingNeed"].str.contains(
+    NEED_PATTERN,
+    na=False,
 )
