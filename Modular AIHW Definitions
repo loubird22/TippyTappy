@@ -1,0 +1,148 @@
+#foundations to modular add 
+everyone_aihw_mds = {
+  🔵Whoareyou
+    "AIHW_name": "The person's legal, preferred, or known name used to identify the individual within the service.",
+    ",AIHW_dob": "The person's date of birth. Used for identification, eligibility, age calculations and reporting.",
+
+   🔵 ",sex_gender": "The person's recorded sex, gender identity, or both, according to service and reporting requirements.",
+
+    🔵  ",AIHW_atsi_status": 
+      "Identifies whether the person is Aboriginal, Torres Strait Islander, both, neither, or choses to with hold.",
+
+  🔵  ",language": "The person's primary spoken language or preferred communication language.",
+    ",cultural_identity": "The person's self-identified cultural, ethnic, religious, community or cultural background.",
+    ",contact_details": "Information used to contact the person including phone numbers, email addresses and addresses.",
+    ",consent": "Records permissions relating to participation, information sharing, referrals, assessment and reporting.",
+    ",relationships": "Records significant relationships such as partners, 
+##**KEY TERMS AND DEFINED LOGIC**##
+,client_name
+,date_of_birth
+,sex_gender
+,atsi_status
+,primary_language
+,cultural_identity
+,contact_details
+,consent_status
+,relationship_records
+,dependants
+,education_status
+,employment_status
+,income_source
+,presentation_date
+,referral_source
+,service_type
+,presenting_concerns
+,presenting_unit
+,primary_worker
+,housing_status
+,tenure_type
+,homelessness_indicator
+,rough_sleeping_indicator
+,housing_risk
+
+🔵--#tenure return definitions
+AIHW_SHSC_TENURE = [
+    "renter_private", "renter_public",
+    "renter_community", "renter_transitional",
+    "renter_caravan_park",
+    "renter_boarding_house",
+    "renter_emergency_accommodation",
+    "rent_free_private",  "rent_free_public",
+    "rent_free_community",
+    "rent_free_transitional"  "owner_fully_owned",
+    "owner_mortgage",
+    "owner_shared_equity",  "life_tenure",
+    "other", "no_tenure",
+    "dont_know"
+Presenting unit relationship interpretations
+
+AIHW_RELATIONSHIP_TO_HEAD = [
+    "self",
+    "spouse_partner",
+    "parent_guardian",
+    "child",
+    "stepchild",
+    "foster_child",
+    "sibling",
+    "aunt_uncle",
+    "niece_nephew",
+    "grandparent",
+    "grandchild",
+    "other_relative",
+    "unrelated_person",
+    "unrelated_flatmate",
+    "other_relationship",
+    "dont_know"
+]
+
+AIHW_SHSC_TENURE = [
+    "renter_private",
+    "renter_public",
+    "renter_community",
+    "renter_transitional",
+    "renter_caravan_park",
+    "renter_boarding_house",
+    "renter_emergency_accommodation",
+    "rent_free_private",
+    "rent_free_public",
+    "rent_free_community",
+    "rent_free_transitional",
+    "owner_fully_owned",
+    "owner_mortgage",
+    "owner_shared_equity",
+    "life_tenure",
+    "other",
+    "no_tenure",
+    "dont_know"
+]
+
+CUSTODY
+AIHW_CARE_ARRANGEMENT = [
+    "residential_care",
+    "family_group_home",
+    "reimbursed_kinship",
+    "foster_care",
+    "other_reimbursed_home_care",
+    "non_reimbursed_kinship",
+    "independent_living",
+    "other_living_arrangement",
+    "parents",
+    "dont_know",
+    "not_applicable"
+]
+
+LIVING ARRANGEMENT OPTIONS
+AIHW_SHSC_LIVING_ARRANGEMENT = [
+    "lone_person",
+    "one_parent_with_children",
+    "couple_with_children",
+    "couple_without_children",
+    "other_family",
+    "group",
+    "dont_know"
+]
+OCCUPANCY
+AIHW_SHSC_OCCUPANCY = [
+    "leaseholder",
+    "not_on_lease",
+    "couch_surfer",
+    "boarder",
+    "living_with_relative_fee_free",
+    "other",
+    "dont_know",
+    "not_applicable"
+]
+##OPERATIONAL INTERPRETATIONS##
+
+OPERATIONAL_RELATIONSHIP = [
+    "biological_parent",
+"Primary_caregivers_additional
+"step_parent",
+"informal_kinship_carer",
+"kinship_carer",    "foster_carer",
+  "shared_custody_parent",
+"grandparent_carer",
+    "guardian",
+    "family_by_choice"
+"Gender_Sexual_Diversity
+]
