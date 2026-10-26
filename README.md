@@ -12,8 +12,6 @@ SQL, Python, PostgreSQL and Supabase.
 
 All information is de-identified from applied use.
 
-Cheers,
- Lou
 <p><font color="#5F6F7A">All information is deidentified from applied use.</font></p>
 <p><font color="#5F6F7A">I develop these tools to support my work and continue building my skillset.</font></p>
 
