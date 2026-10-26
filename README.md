@@ -1,19 +1,49 @@
-Service Information Platform
+TippyTappy
 
-A place for ideas I keep coming back to in human services and a way to experiment with better ways of understanding demand, need and service delivery.
+I'm a worker in human services with an interest in systems improvement, data, reporting and service design.
 
-Most systems are good at counting activity. They're less useful at explaining complexity, changing client need, service pressure or what happens over time. This project explores ways to connect information from different sources and turn it into something more useful for workers, services and decision-makers.
+Over the years I've worked on projects that required turning messy information, disconnected systems and competing reporting requirements into something that makes practical sense. More recently I've started exploring Python, SQL, PostgreSQL, Supabase and information architecture as tools to support that work.
 
-At its core, the idea is simple: capture information once and use it many times.
+This repository is a collection of notes, prototypes, SQL examples, Python experiments, data models, business rules and half-formed ideas. Some are practical utilities, some are proof-of-concepts, and some are simply ways of thinking through complex service-delivery problems.
 
-Right now I'm mostly learning, experimenting and building proof-of-concepts around service modelling, reporting, data structures and information architecture.
+It's intentionally a working notebook rather than a finished product.
 
-SQL, Python, PostgreSQL and Supabase.
+Totally Not A CRM™
 
-All information is de-identified from applied use.
+One recurring idea throughout this repository is the foundation of a "totally not a CRM" that attempts to align operational practice, reporting requirements and service intelligence.
 
-<p><font color="#5F6F7A">All information is deidentified from applied use.</font></p>
-<p><font color="#5F6F7A">I develop these tools to support my work and continue building my skillset.</font></p>
+Its ambitious goal is to reduce the friction created by contractual, funding and reporting obligations while making useful information more accessible to frontline workers, managers and decision-makers.
 
-<p><font color="#7F6BB5">Cheers,</font><br>
-<font color="#5F6F7A">Lou</font></p>
+Most systems are good at counting activity.
+
+They're often less effective at explaining complexity, changing client need, service pressure, cumulative risk or what happens over time.
+
+This project explores ways to connect information from different sources and transform it into something more useful.
+
+We talk about being trauma-informed and avoiding people having to repeat their story, yet many services still ask the same questions multiple times across programs, teams and systems.
+
+That disconnect interests and infuriates me because. Noone's got any cash to allow that kind of thing. 
+Stuff I'm keen on rn
+Space State in Pymc4
+Service modelling
+    Data architecture
+    Information governance
+        Reporting design
+        Human services data standards
+            Client complexity and cumulative risk
+            Outcome measurement
+            SQL and data analysis
+                Python automation
+                Supabase / PostgreSQL
+Currently using
+SQL
+  Python
+    PostgreSQL
+        SQL Server Management Studio (SSMS)
+            DBeaver
+                Supabase
+FYI
+All examples are de-identified and contain no client information. Nothing here should be considered production-ready.
+I'm learning as I go and sharing the process because some of the stuff we currently use is... yuckers. 
+
+If any of these ideas are useful, interesting, wrong, or worth discussing, I'd be happy to connect.
