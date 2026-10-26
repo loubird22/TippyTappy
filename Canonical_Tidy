@@ -70,7 +70,17 @@ AUDIT_COLUMNS = [
 
 # -- LOAD AND STANDARDISE FILES ---------------------------------------
 
-frames = []
+if not frames:
+    raise ValueError(
+        "No source files were successfully loaded."
+    )
+
+SOURCE_FILES = {
+    "Referrals": "referrals.csv",
+    "Assessments": "assessments.csv",
+    "Presentations": "presentations.csv",
+}
+#--need to be replaced with actual sources--
 
 for source_system, file in SOURCE_FILES.items():
     try:
