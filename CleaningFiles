@@ -1,5 +1,85 @@
+import re
 import pandas as pd
-df = pd.read_excel("referrals.xlsx")
-df["Suburb"] = df["Suburb"].str.title()
-df["Client Name"] = df["Client Name"].str.strip()
-df.to_excel("cleaned_referrals.xlsx", index=False)
+
+# Required columns used across analysis
+REQUIRED_FIELDS = {
+    "ClientID"
+    ,"ProgramType"
+    ,"AssessmentType"
+}
+
+# Standardise labels from different extracts
+COLUMN_MAPPING = {
+    "Client Id": "ClientID"
+    ,"Client_ID": "ClientID"
+    ,"Program": "ProgramType"
+    ,"Assessment": "AssessmentType"
+}
+
+# Future audit metadata
+AUDIT_COLUMNS = [
+    "created_at"
+    ,"created_by"
+    ,"updated_at"
+    ,"updated_by"
+]
+
+# Source files
+csv_files = [
+    "referrals.csv"
+    ,"assessments.csv"
+    ,"presentations.csv"
+]
+
+# Precompiled need classification patterns
+# Reused across all client records
+NEED_PATTERN = re.compile(
+    r"\b(housing|food|mental health|dv|family violence|support)\b"
+    ,re.IGNORECASE
+)
+
+# Load and standardise files
+frames = []
+
+for file in csv_files:
+
+    df = pd.read_csv(file)
+
+    df.columns = (
+        df.columns
+        .str.strip()
+    )
+
+    df = df.rename(
+        columns=COLUMN_MAPPING
+    )
+
+    frames.append(df)
+
+# Combine records
+combined_df = pd.concat(
+    frames
+    ,ignore_index=True
+)
+
+# Build unique event key
+combined_df["RecordKey"] = (
+    combined_df.get(
+        "ClientID"
+        ,pd.Series(dtype="object")
+    ).astype(str)
+    + "|"
+    + combined_df.get(
+        "AssessmentType"
+        ,pd.Series(dtype="object")
+    ).astype(str)
+    + "|"
+    + combined_df.get(
+        "ModifiedDate"
+        ,pd.Series(dtype="object")
+    ).astype(str)
+)
+
+# Remove duplicate events where recurring across events
+combined_df = combined_df.drop_
+
